@@ -1,0 +1,54 @@
+---
+- name: copy maintenance script
+  copy:
+    src: maintenance_script.sh
+    dest: /usr/local/bin/maintenance_script.sh
+    owner: root
+    group: root
+    mode: 755
+  tags: script
+
+# checks once a second for the presence of lockfile and waits for absence before proceeding
+- name: wait for no lockfile
+  local_action:
+    shell aws s3 ls s3://{{ bucket }}/lockfile
+  register: result
+  until: result.rc == 1
+  retries: 86400
+  delay: 1
+  become: no
+  failed_when: result.stderr != ""
+  tags: lockfile
+
+# ok, our turn
+# with an instance role, this should use the s3 module as follows.
+# - name: write lockfile to S3
+#   s3:
+#     bucket: mp-takehome-bucket
+#     object: /lockfile
+#     src: "{{ playbook_dir }}/roles/maintenance/files/lockfile"
+#     mode: put
+#   become: no
+#   tags: lockfile
+
+# without an intance role, do as a local action
+# ok, our turn
+- name: write lockfile
+  local_action:
+    shell aws s3 cp {{ playbook_dir }}/roles/maintenance/files/lockfile s3://{{ bucket }}/lockfile
+  become: no
+  tags: lockfile
+
+- name: run maintenance script
+  command: /usr/local/bin/maintenance_script.sh creates=/tmp/maintenance_completed
+  async: 86400
+  poll: 30
+  tags: script
+
+- name: remove lockfile
+  local_action: 
+    command aws s3 rm s3://{{ bucket }}/lockfile
+  become: no
+  tags: lockfile
+
+# vim: sw=2:ts=2:sts=2:ft=ansible:expandtab

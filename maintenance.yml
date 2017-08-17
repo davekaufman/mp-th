@@ -1,0 +1,14 @@
+---
+# This playbook runs our long-running maintenance task and blocks on script completion 
+
+- name: run maintenance task
+  hosts: maintenance_group
+  remote_user: davek
+  become: yes
+  serial: 1
+  vars:
+    bucket: "mp-takehome-bucket"
+  roles:
+    - maintenance
+
+# vim: sw=2:ts=2:sts=2:ft=ansible:expandtab
