@@ -7,9 +7,12 @@ dd_host=localhost                         # dogstatsd host
 facility="local0.notice"                  # syslog facility / level
 logfile="/var/log/maintenance_script.log" # logfile
 
-
 # have we met before?
 [[ -f "/tmp/maintenance-completed" ]] && echo "previously run successfully" && exit 0
+
+# only one instance of this script may run at a time
+exec 200<$0 && flock -en 200 || exit 200
+
 
 # log start to syslog and file via logger
 logger -p ${facility} -t maintenance_script "beginning run of maintenance script"  -s 2>${logfile}
